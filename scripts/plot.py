@@ -9,7 +9,7 @@ if len(sys.argv)<2 or sys.argv[1].lower() == "oggi":
     plotta(leggiTemperature(inizio))
 
 elif sys.argv[1].lower() == "alltime":
-    plotta()
+    plotta(leggiTemperature())
 
 elif re.match("ultime[0-9][0-9]?ore",sys.argv[1].lower())!=None:
     x = int(sys.argv[1].lower().split("ultime")[-1].split("ore")[0])
