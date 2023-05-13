@@ -1,11 +1,18 @@
-from controllo_ventola import getCPUtemperature #ricordati che restituisce una stringa, non un float
 import matplotlib.pyplot as plt
-import matplotlib.dates as mlp_dates
 import datetime
-import numpy as np
+from datetime import timedelta
+import os
+from costanti import *
 
-directory='/home/redital/Desktop/monitoraggio_temperatura'
-annoZero=2022
+# Funzione per ottenere il valore delle temperatura si sistema della CPU
+def getCPUtemperature():                                    #ricordati che restituisce una stringa, non un float
+    res = os.popen('vcgencmd measure_temp').readline()
+    temp =(res.replace("temp=","").replace("'C\n",""))
+    deg = u'\xb0'  # codice utf gradi
+    deg = deg.encode('utf8')
+    
+    #print("temp is {0} degrees".format(temp))
+    return temp
 
 def scriviTemperatura():
     now=datetime.datetime.now()
@@ -13,53 +20,32 @@ def scriviTemperatura():
             file.write('{0}: {1}\n'.format(now.strftime("%d-%m-%Y %H:%M:%S"),getCPUtemperature()))
             file.close()
 
-def leggiTemperature(inizioStringa="01-01-2022 00:00:00", fineStringa="01-01-2122 23:59:59"):
-    inizio=conversioneTempo(inizioStringa)
-    fine=conversioneTempo(fineStringa)
+def leggiTemperature(inizio = default_inizio, fine = default_fine):
+    #inizio=datetime.datetime.strptime(inizioStringa,"%d-%m-%Y %H:%M:%S")
+    #fine=datetime.datetime.strptime(fineStringa,"%d-%m-%Y %H:%M:%S")
     #print("da " + inizioStringa + " a " + fineStringa)
     temperature={}
     with open(directory + "/temperature.log", mode='r') as file:
         for i in file.readlines():
             try:
-                temperature[conversioneTempo(i.split(": ")[0])]=float(i.split(": ")[-1])
+                temperature[datetime.datetime.strptime(i.split(": ")[0],"%d-%m-%Y %H:%M:%S")]=float(i.split(": ")[-1])
             except:
                 print("riga {0} invalida ignorata".format(i))
-    daEliminare=[]
-    for key in temperature:
-        if key[0]>fine[0] or (key[0]==fine[0] and key[1]>fine[1]) or key[0]<inizio[0] or (key[0]==inizio[0] and key[1]<inizio[1]):
-            daEliminare.append(key)
-    for key in daEliminare:
-        del temperature[key]
+    temperature = {key:value for key, value in temperature.items() if key>=inizio and key<=fine}
     return temperature
 
 def leggiUltimeXOre(x):
-    fineStringa=datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S")
-    oraFine=int(fineStringa.split(" ")[-1].split(":")[0])
-    inizioStringa=fineStringa.split(" ")[0] + " " + str(oraFine-x) + ":" + fineStringa.split(":")[1] + ":" + fineStringa.split(":")[2]
-    print (inizioStringa + " ------>" + fineStringa)
-    return leggiTemperature(inizioStringa,fineStringa)
+    fine = datetime.datetime.now()
+    inizio = fine - timedelta(hours=x)
+    return leggiTemperature(inizio,fine)
 
 def leggiUltimiXMinuti(x):
-    fineStringa=datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S")
-    oraFine=int(fineStringa.split(":")[1])
-    inizioStringa=fineStringa.split(":")[0] + ":" + str(oraFine-x) + ":" + fineStringa.split(":")[2]
-    print (inizioStringa + " ------>" + fineStringa)
-    return leggiTemperature(inizioStringa,fineStringa)
-
-def conversioneTempo(stringaTempo):
-    dataStringa=stringaTempo.split(" ")[0]
-    orarioStringa=stringaTempo.split(" ")[-1]
-    #Il minimo giorno esistente è 01/01/2022 che è codificato come 32. Per ogni data esiste un unico codice, ma non per ogni codice esiste una data
-    data=(int(dataStringa.split("-")[2])-annoZero)*360 + (int(dataStringa.split("-")[1]))*31 + int(dataStringa.split("-")[0])
-    orario=(int(orarioStringa.split(":")[0]))*60*60 + (int(orarioStringa.split(":")[1]))*60 + int(orarioStringa.split(":")[2])
-    return data, orario
-
+    fine = datetime.datetime.now()
+    inizio = fine - timedelta(minutes=x)
+    return leggiTemperature(inizio,fine)
 
 def plotta (temperature):
-    #xTupla=temperature.keys()
-    x=[]
-    for i in temperature.keys():
-        x.append(i[1]+(i[0]-342)*86399)
+    x=temperature.keys()
     y=temperature.values()
     #print(list(x))
     #print(list(y))
